@@ -1,38 +1,40 @@
-import { PrismaClient } from '@prisma/client'
-
 const url = process.env.DATABASE_URL
-// Detect if we are using a placeholder or missing connection string
 export const isDemoMode = !url || url.includes('<username>') || url.includes('YOUR_') || url === ''
 
-const prismaClientSingleton = () => {
-  if (isDemoMode) {
-    if (typeof window === 'undefined') {
-      console.warn('⚠️ No valid DATABASE_URL found. Running in Demo Mode (Mock Storage).')
-    }
-    // Return a proxy that handles any property access without crashing
-    return new Proxy({} as any, {
-      get: (target, prop) => {
-        if (prop === 'then') return undefined
-        return new Proxy(() => {}, {
-          get: (t, p) => {
-            if (p === 'then') return undefined
-            return () => Promise.resolve([])
-          },
-          apply: (t, thisArg, args) => Promise.resolve(null)
-        })
+const mockPrisma = new Proxy({} as any, {
+  get: (target, prop) => {
+    // Check if prop is common Prisma model (lowercase or uppercase)
+    const mockModel = new Proxy({} as any, {
+      get: (t, p) => {
+        if (p === 'then') return undefined
+        return (...args: any[]) => {
+          // Return empty arrays for list calls, null for others
+          if (p === 'findMany' || p === 'groupBy' || p === 'aggregate') return Promise.resolve([])
+          if (p === 'count') return Promise.resolve(0)
+          return Promise.resolve(null)
+        }
       }
     })
+    return mockModel
   }
+})
 
-  return new PrismaClient()
+let prisma: any
+
+if (isDemoMode) {
+  if (typeof window === 'undefined') {
+    console.warn('⚠️ DATABASE_URL is missing or a placeholder. Running in Demo Mode (Mock Storage).')
+  }
+  prisma = mockPrisma
+} else {
+  try {
+    // Only require Prisma if we actually have a connection string
+    const { PrismaClient } = require('@prisma/client')
+    prisma = new PrismaClient()
+  } catch (err) {
+    console.error('Failed to initialize Prisma Client:', err)
+    prisma = mockPrisma
+  }
 }
-
-declare global {
-  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>
-}
-
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
 
 export default prisma
-
-if (process.env.NODE_ENV !== 'production' && !isDemoMode) globalThis.prismaGlobal = prisma
