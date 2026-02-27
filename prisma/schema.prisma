@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+}
+
+model User {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  email        String        @unique
+  password     String
+  name         String?
+  role         String        @default("USER")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  tasks        Task[]
+  comments     Comment[]
+  activityLogs ActivityLog[]
+  auditLogs    AuditLog[]
+}
+
+model Task {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  description  String?
+  status       String        @default("TODO")
+  priority     String        @default("MEDIUM")
+  dueDate      DateTime?
+  
+  userId       String        @db.ObjectId
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime? 
+
+  comments     Comment[]
+  attachments  Attachment[]
+  activityLogs ActivityLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+}
+
+model Comment {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  content      String        
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  taskId       String        @db.ObjectId
+  task         Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  userId       String        @db.ObjectId
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+model Attachment {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  fileName     String
+  fileUrl      String
+  metadata     String?       
+  
+  taskId       String        @db.ObjectId
+  task         Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime      @default(now())
+
+  @@index([taskId])
+}
+
+model ActivityLog {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  action       String   
+  details      String?  
+  
+  taskId       String   @db.ObjectId
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  action       String
+  resource     String
+  details      String?
+  ipAddress    String?
+  userAgent    String?
+  
+  userId       String?  @db.ObjectId
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
