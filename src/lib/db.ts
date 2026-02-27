@@ -1,9 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  return new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
-  })
+  if (typeof window === 'undefined' && !process.env.DATABASE_URL) {
+    return {} as any
+  }
+  return new PrismaClient()
 }
 
 declare global {

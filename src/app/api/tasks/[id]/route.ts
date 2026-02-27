@@ -11,6 +11,11 @@ async function checkAccess(taskId: string, req: Request) {
   
   if (!userId) return { error: 'Unauthorized', status: 401 }
   
+  if (!process.env.DATABASE_URL) {
+    if (taskId.startsWith('mock-')) return { task: { id: taskId, title: 'Mock Task', userId: userId || 'demo' }, userId: userId || 'demo', role }
+    return { error: 'Database not connected', status: 503 }
+  }
+  
   const task = await prisma.task.findUnique({ where: { id: taskId } })
   if (!task || task.deletedAt) return { error: 'Not found', status: 404 }
   
@@ -26,6 +31,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const resolvedParams = await params;
     const access = await checkAccess(resolvedParams.id, req)
     if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ 
+        data: { 
+          id: resolvedParams.id, 
+          title: 'Mock Task Detail', 
+          description: 'This is a mock description because no database is connected.',
+          status: 'TODO', 
+          priority: 'MEDIUM',
+          dueDate: new Date().toISOString(),
+          comments: [],
+          activityLogs: []
+        } 
+      }, { status: 200 })
+    }
 
     const task = await prisma.task.findUnique({
       where: { id: resolvedParams.id },

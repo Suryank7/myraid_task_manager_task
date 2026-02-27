@@ -44,6 +44,37 @@ export async function GET(req: Request) {
 
     const skip = (page - 1) * limit
 
+    if (!process.env.DATABASE_URL) {
+      const mockTasks = [
+        {
+          id: 'mock-1',
+          title: 'Welcome to TaskForge (Demo Mode)',
+          description: 'This is a mock task because no database is connected.',
+          status: 'TODO',
+          priority: 'HIGH',
+          dueDate: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          user: { id: 'demo', name: 'Demo User', email: 'demo@example.com' }
+        },
+        {
+          id: 'mock-2',
+          title: 'Drag me to In Progress!',
+          description: 'The Kanban board still works with client-side state.',
+          status: 'TODO',
+          priority: 'MEDIUM',
+          dueDate: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          user: { id: 'demo', name: 'Demo User', email: 'demo@example.com' }
+        }
+      ]
+      return NextResponse.json({
+        data: mockTasks,
+        meta: { total: 2, page: 1, limit: 10, totalPages: 1 }
+      }, { status: 200 })
+    }
+
     const [tasks, total] = await Promise.all([
       prisma.task.findMany({
         where,
@@ -90,6 +121,21 @@ export async function POST(req: Request) {
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+    }
+
+    if (!process.env.DATABASE_URL) {
+      const mockNewTask = {
+        id: `mock-${Date.now()}`,
+        title,
+        description,
+        status: status || 'TODO',
+        priority: priority || 'MEDIUM',
+        dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+        userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      return NextResponse.json({ data: mockNewTask }, { status: 201 })
     }
 
     const encryptedDescription = encryptData(description)
