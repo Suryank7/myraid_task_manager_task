@@ -1,9 +1,16 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  if (typeof window === 'undefined' && !process.env.DATABASE_URL) {
+  const url = process.env.DATABASE_URL
+  const isPlaceholder = !url || url.includes('<username>') || url.includes('YOUR_') || url === ''
+  
+  if (isPlaceholder) {
+    if (typeof window === 'undefined') {
+      console.warn('⚠️ No valid DATABASE_URL found. Running in Demo Mode (Mock Storage).')
+    }
     return {} as any
   }
+
   return new PrismaClient()
 }
 
