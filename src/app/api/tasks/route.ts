@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/db'
+import prisma, { isDemoMode } from '@/lib/db'
 import { encryptData, decryptData } from '@/lib/encryption'
 import { logActivity } from '@/lib/audit'
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
 
     const skip = (page - 1) * limit
 
-    if (!process.env.DATABASE_URL) {
+    if (isDemoMode) {
       const mockTasks = [
         {
           id: 'mock-1',
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
     }
 
-    if (!process.env.DATABASE_URL) {
+    if (isDemoMode) {
       const mockNewTask = {
         id: `mock-${Date.now()}`,
         title,

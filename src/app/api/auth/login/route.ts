@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/db'
+import prisma, { isDemoMode } from '@/lib/db'
 import bcrypt from 'bcrypt'
 import { createSessionTokens } from '@/lib/jwt'
 import { cookies } from 'next/headers'
@@ -12,14 +12,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password)
-    if (!passwordMatch) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    let user: any = null;
+    
+    if (isDemoMode) {
+       user = { id: 'demo-user', email, name: 'Demo User', role: 'ADMIN', password: 'hashed_password' }
+    } else {
+       user = await prisma.user.findUnique({ where: { email } })
+       if (!user) {
+         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+       }
+       
+       const passwordMatch = await bcrypt.compare(password, user.password)
+       if (!passwordMatch) {
+         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+       }
     }
 
     const { accessToken, refreshToken } = await createSessionTokens(user.id, user.role)
